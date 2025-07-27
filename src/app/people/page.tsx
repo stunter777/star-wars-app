@@ -5,7 +5,7 @@ import {Container, Typography, TextField, Box, Pagination, Skeleton, Alert} from
 import Grid from "@mui/material/Grid";
 import PersonCard from "@/components/PersonCard/PersonCard";
 import {extractIdFromUrl, Person, SwapiListResponse} from "@/lib/types";
-
+import { loadEdits } from "@/lib/localStorage";
 
 export default function PeoplePage() {
     const [search, setSearch] = useState("");
@@ -23,6 +23,8 @@ export default function PeoplePage() {
     }, [search]);
 
 
+
+
     useEffect(() => {
         let abort = false;
         async function load() {
@@ -33,7 +35,15 @@ export default function PeoplePage() {
                 });
                 if (!res.ok) throw new Error("failed");
                 const json = (await res.json()) as SwapiListResponse<Person>;
-                if (!abort) setData(json);
+
+                if (!abort) {
+                    const edits = loadEdits();
+                    const mergedResults = json.results.map((p) => {
+                        const id = extractIdFromUrl(p.url);
+                        return edits[id] ? { ...p, ...edits[id] } : p;
+                    });
+                    setData({ ...json, results: mergedResults });
+                }
             } catch {
                 if (!abort) setData(null);
             } finally {
@@ -43,6 +53,7 @@ export default function PeoplePage() {
         load();
         return () => { abort = true; };
     }, [debouncedSearch, page]);
+
     return (
         <Container sx={{ py: 4 }}>
             <Typography variant="h4" gutterBottom>
